@@ -2,7 +2,18 @@ import asyncio
 from rich.progress import Progress, BarColumn, TimeElapsedColumn, TimeRemainingColumn
 from rich.console import Console
 
-from .llm import inference
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from llm import inference
+from prompts import (
+    EVAL_SYSTEM_PROMPT,
+    EVAL_USER_PROMPT,
+    GENERATION_SYSTEM_PROMPT,
+    GENERATION_USER_PROMPT
+)
+from utils import extract_tag_content
 
 
 DATASET = [
@@ -17,9 +28,21 @@ async def process_item(item):
     question = item["question"]
     expected_answer = item["answer"]
     
-    predicted_answer = await inference(model_name="gpt-4o", prompt=question)
+    predicted_answer = (await inference(model_name="gpt-4o", system=GENERATION_SYSTEM_PROMPT.substitute(), 
+                                       user=GENERATION_USER_PROMPT.substitute(
+                                           question=question
+                                       ))).choices[0].message.content
     
-    is_correct = (predicted_answer.strip().lower() == expected_answer.strip().lower())
+    is_correct = (await inference(model_name='gpt-4o-mini', system=EVAL_SYSTEM_PROMPT.substitute(), 
+                                 user=EVAL_USER_PROMPT.substitute(
+                                     correct_answer=expected_answer,
+                                     student_answer=predicted_answer
+                                 ))).choices[0].message.content
+    
+    from pprint import pprint
+    pprint(is_correct)
+    
+    is_correct = 'yes' in [x.lower() for x in extract_tag_content(is_correct, 'answer')]
     
     return {
         "question": question,
@@ -73,8 +96,12 @@ async def benchmark(dataset, concurrency: int = 5):
                 progress.update(task_id, advance=1)
 
     # Compute accuracy
-    total_correct = sum(r["correct"] for r in results)
-    accuracy = total_correct / len(dataset) if dataset else 0.0
+    try:
+        total_correct = sum(r["correct"] for r in results)
+        accuracy = total_correct / len(dataset) if dataset else 0.0
+    except:
+        total_correct = 0
+        accuracy = 0
 
     # Print final results & accuracy
     console.print("\n[bold green]Benchmark complete![/bold green]")
@@ -88,8 +115,8 @@ def main():
     results = asyncio.run(benchmark(DATASET, concurrency=3))
     
     # If you want to inspect all predictions:
-    for item in results:
-        print(item)
+    # for item in results:
+    #     print(item)
 
 
 if __name__ == "__main__":
