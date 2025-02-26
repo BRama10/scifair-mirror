@@ -74,7 +74,7 @@ async def main():
         dataset=dataset,
         generation_concurrency=args.generation_concurrency,
         evaluation_concurrency=args.evaluation_concurrency,
-        batch_size=args.batch_size
+        batch_size=args.batch_size, 
     )
     
     # Run benchmark
