@@ -13,7 +13,7 @@ import trl
 class TrainingConfig:
     model_name: str = field(default="Qwen/Qwen2.5-7B-Instruct")
     block_size: int = field(default=32768)
-    wandb_project: Optional[str] = field(default="toy-training-balaji")
+    wandb_project: Optional[str] = field(default="7b-training-balaji")
     wandb_entity: Optional[str] = field(default="fanofleanne-openminder-ai")
     train_file_path: Optional[str] = field(default='simplescaling/s1K-1.1_tokenized')
     dagger: bool = field(default=False)
@@ -38,7 +38,7 @@ def train():
                   "attn_implementation": "flash_attention_2", "use_cache": False}
         model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name, **kwargs)
     else:
-        kwargs = {"attn_implementation": "flash_attention_2"}
+        kwargs = {"torch_dtype": "auto", "attn_implementation": "flash_attention_2", "use_cache": False}
         model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name, **kwargs)
 
     dataset = load_dataset(config.train_file_path)
