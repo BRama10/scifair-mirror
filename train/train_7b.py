@@ -68,12 +68,10 @@ def train():
     args.dataset_text_field = 'text'
     args.max_seq_length = config.block_size
     
-    d = dataset['train'].shuffle(seed=42).select(range(600))
-
     trainer = trl.SFTTrainer(
         model,
-        train_dataset=d,
-        eval_dataset=d,
+        train_dataset=dataset['train'],
+        eval_dataset=dataset['test'] if 'test' in dataset else dataset['train'],
         args=args,
         data_collator=collator
     )

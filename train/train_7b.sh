@@ -3,7 +3,7 @@
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 uid="$(date +%Y%m%d_%H%M%S)"
-base_model="Qwen/Qwen2.5-32B-Instruct"
+base_model="Qwen/Qwen2.5-7B-Instruct"
 lr=1e-5
 min_lr=0
 epochs=5

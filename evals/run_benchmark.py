@@ -72,9 +72,9 @@ async def main():
     dataset = Dataset(dataset_data, name=args.benchmark.upper())
     benchmark = BenchmarkManager(
         dataset=dataset,
-        generation_concurrency=args.generation_concurrency,
-        evaluation_concurrency=args.evaluation_concurrency,
-        batch_size=args.batch_size, 
+        generation_batch_size=args.generation_concurrency,
+        evaluation_batch_size=args.evaluation_concurrency,
+        generation_model='thehunter911/test'
     )
     
     # Run benchmark
