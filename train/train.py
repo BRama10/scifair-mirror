@@ -2,12 +2,17 @@ import os
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 import warnings
+
 warnings.filterwarnings("ignore", category=FutureWarning)
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 from datasets import load_dataset
 import transformers
 import trl
+
 
 @dataclass
 class TrainingConfig:
@@ -15,12 +20,13 @@ class TrainingConfig:
     block_size: int = field(default=32768)
     wandb_project: Optional[str] = field(default="7b-training-balaji")
     wandb_entity: Optional[str] = field(default="fanofleanne-openminder-ai")
-    train_file_path: Optional[str] = field(default='simplescaling/s1K-1.1_tokenized')
+    train_file_path: Optional[str] = field(default="simplescaling/s1K-1.1_tokenized")
     dagger: bool = field(default=False)
 
     def __post_init__(self):
-        os.environ['WANDB_PROJECT'] = self.wandb_project
-        os.environ['WANDB_ENTITY'] = self.wandb_entity
+        os.environ["WANDB_PROJECT"] = self.wandb_project
+        os.environ["WANDB_ENTITY"] = self.wandb_entity
+
 
 def train():
     # parsing input
@@ -34,17 +40,29 @@ def train():
     if "70B" in config.model_name:
         # Removed "low_cpu_mem_usage": True, for 70B, since by default we are in FSDP,
         # it's more efficient to do  "cpu_ram_efficient_loading": true, in fsdp_config.json
-        kwargs = {"device_map": "auto", "torch_dtype": "auto",
-                  "attn_implementation": "flash_attention_2", "use_cache": False}
-        model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name, **kwargs)
+        kwargs = {
+            "device_map": "auto",
+            "torch_dtype": "auto",
+            "attn_implementation": "flash_attention_2",
+            "use_cache": False,
+        }
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            config.model_name, **kwargs
+        )
     else:
-        kwargs = {"torch_dtype": "auto", "attn_implementation": "flash_attention_2", "use_cache": False}
-        model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name, **kwargs)
+        # kwargs = {"torch_dtype": "auto", "attn_implementation": "flash_attention_2", "use_cache": False}
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            config.model_name,
+            load_in_4bit=True,
+            attn_implementation="flash_attention_2",
+        )
 
     dataset = load_dataset(config.train_file_path)
 
     # setting up trainer
-    tokenizer = transformers.AutoTokenizer.from_pretrained(config.model_name, use_fast=True)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
+        config.model_name, use_fast=True
+    )
     if "Llama" in config.model_name:
         instruction_template = "<|start_header_id|>user<|end_header_id|>"
         response_template = "<|start_header_id|>assistant<|end_header_id|>\n\n"
@@ -63,19 +81,17 @@ def train():
         instruction_template=instruction_template,
         response_template=response_template,
         tokenizer=tokenizer,
-        mlm=False
+        mlm=False,
     )
-    args.dataset_text_field = 'text'
+
+    args.dataset_text_field = "text"
     args.max_seq_length = config.block_size
-    
-    d = dataset['train'].shuffle(seed=42).select(range(600))
+    args.use_liger = True
+
+    d = dataset["train"].shuffle(seed=42).select(range(600))
 
     trainer = trl.SFTTrainer(
-        model,
-        train_dataset=d,
-        eval_dataset=d,
-        args=args,
-        data_collator=collator
+        model, train_dataset=d, eval_dataset=d, args=args, data_collator=collator
     )
 
     trainer.train()
