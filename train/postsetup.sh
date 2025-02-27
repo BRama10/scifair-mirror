@@ -1,4 +1,4 @@
-base_model="Qwen/Qwen-7B"
+base_model=""Qwen/Qwen2.5-32B-Instruct"
 
 python -m wandb login
 
