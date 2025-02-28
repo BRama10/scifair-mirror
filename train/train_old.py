@@ -12,7 +12,6 @@ logging.basicConfig(
 from datasets import load_dataset
 import transformers
 import trl
-import torch
 
 
 @dataclass
@@ -52,37 +51,11 @@ def train():
         )
     else:
         # kwargs = {"torch_dtype": "auto", "attn_implementation": "flash_attention_2", "use_cache": False}
-        # model = transformers.AutoModelForCausalLM.from_pretrained(
-        #     config.model_name,
-        #     # load_in_4bit=True,
-        #     attn_implementation="flash_attention_2",
-        # )
-
-        from transformers import BitsAndBytesConfig
-        from peft import LoraConfig, prepare_model_for_kbit_training
-        
-        # Modify model loading in your training script
-
-        #@leanne change 1
-        # quant_config = BitsAndBytesConfig(
-        #     load_in_4bit=True,
-        #     bnb_4bit_quant_type="nf4",
-        #     bnb_4bit_compute_dtype=torch.bfloat16,
-        #     bnb_4bit_use_double_quant=True
-        # )
-
-        quant_config = BitsAndBytesConfig(
-            load_in_8bit=True,  # Changed from 4-bit to 8-bit
-            bnb_8bit_use_double_quant=True,
-            bnb_8bit_compute_dtype=torch.bfloat16
-        )
-        
         model = transformers.AutoModelForCausalLM.from_pretrained(
             config.model_name,
-            quantization_config=quant_config,
+            load_in_4bit=True,
             attn_implementation="flash_attention_2",
         )
-        model = prepare_model_for_kbit_training(model)
 
     dataset = load_dataset(config.train_file_path)
 
@@ -117,30 +90,9 @@ def train():
 
     d = dataset["train"].shuffle(seed=42).select(range(600))
 
-    # @leanne change 2
-    # peft_config = LoraConfig(
-    #     r=64,
-    #     lora_alpha=16,
-    #     target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
-    #     lora_dropout=0.05,
-    #     bias="none",
-    #     task_type="CAUSAL_LM"
-    # )
-
-    peft_config = LoraConfig(
-        r=128,  # Increased from 64
-        lora_alpha=32,  # Scaled with r
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "mlp.up_proj", "mlp.down_proj"],
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM"
-    )
-
     trainer = trl.SFTTrainer(
-        model, train_dataset=d, eval_dataset=d, args=args, data_collator=collator, peft_config=peft_config
+        model, train_dataset=d, eval_dataset=d, args=args, data_collator=collator, pe
     )
-
-    print(args.use_liger, 'is liger')
 
     trainer.train()
     trainer.save_model(output_dir=args.output_dir)

@@ -24,8 +24,9 @@ torchrun --nproc-per-node ${gpu_count} --master_port 12345 \
     --train_file_path="simplescaling/s1K-1.1_tokenized" \
     --model_name=${base_model} \
     --warmup_ratio=0.05 \
+    --fsdp="full_shard auto_wrap" \
+    --fsdp_config="fsdp_config_qwen.json" \
     --bf16=True \
-    --deepspeed="ds_config.json" \
     --eval_strategy="no" \
     --logging_steps=1 \
     --save_strategy="no" \
@@ -37,4 +38,4 @@ torchrun --nproc-per-node ${gpu_count} --master_port 12345 \
     --output_dir="ckpts/s1-${uid}" \
     --push_to_hub=${push_to_hub} \
     --save_only_model=True \
-    --optim="paged_adamw_32bit"
+    --gradient_checkpointing=True 
